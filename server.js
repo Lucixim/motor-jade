@@ -1,30 +1,49 @@
 const express = require('express');
-const cors = require('cors'); // <--- A nossa nova chave de segurança
+const cors = require('cors'); 
 const app = express();
 
-// 1. Liberamos a porta para qualquer site (como o seu na Hostinger) poder enviar dados
 app.use(cors());
-
-// 2. Permitimos que o servidor entenda JSON
 app.use(express.json());
 
-// 3. A nossa Rota de Webhook
-app.post('/api/jade-webhook', (req, res) => {
+// A nossa Rota de Webhook (A porta que o Google vai chutar)
+app.post('/api/jade-webhook', async (req, res) => {
     const dadosRecebidos = req.body;
-    console.log("🚨 [SISTEMA JADE] ALERTA DE WEBHOOK RECEBIDO! 🚨");
-    console.log("Hora:", new Date().toLocaleTimeString('pt-BR'));
+    
+    console.log("🚨 [SISTEMA JADE] WEBHOOK RECEBIDO!");
     console.log("Conteúdo:", dadosRecebidos);
 
-    res.status(200).send("Webhook processado pela Jade com sucesso.");
+    // O NOSSO ALVO NA HOSTINGER (Onde a notícia vai ser guardada)
+    const urlHostinger = 'https://infodiretab3.com.br/api/receber_noticia.php';
+
+    try {
+        // A Jade pega na notícia e dispara para a sua Hostinger
+        console.log("A enviar dados para a Hostinger...");
+        const respostaHostinger = await fetch(urlHostinger, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(dadosRecebidos)
+        });
+
+        const resultado = await respostaHostinger.text();
+        console.log("✅ Hostinger confirmou o recebimento:", resultado);
+
+        // Responde ao Google que o trabalho foi feito
+        res.status(200).send("A Jade processou o Webhook e já injetou a notícia na Hostinger!");
+    } catch (erro) {
+        console.error("❌ Erro ao enviar para a Hostinger:", erro);
+        res.status(500).send("Erro de comunicação com a base.");
+    }
 });
 
-// 4. Rota de teste simples
+// Rota de teste simples
 app.get('/', (req, res) => {
-    res.send("🟢 Motor Jade.IA Backend está ONLINE, com segurança CORS ativada e à escuta!");
+    res.send("🟢 Motor Jade.IA Backend está ONLINE e conectado diretamente ao InfoDireta!");
 });
 
-// 5. Ligar o servidor
+// Ligar o servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor a rodar na porta ${PORT}`);
+    console.log(`🚀 Motor da Jade a rodar na porta ${PORT}`);
 });
